@@ -38,7 +38,7 @@ class RegisterScreen extends ConsumerWidget {
               TextField(
                 controller: firstNameController,
                 decoration: const InputDecoration(
-                  labelText: 'Имя (необязательно)',
+                  labelText: 'Имя',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -46,7 +46,7 @@ class RegisterScreen extends ConsumerWidget {
               TextField(
                 controller: phoneController,
                 decoration: const InputDecoration(
-                  labelText: 'Телефон (необязательно)',
+                  labelText: 'Телефон',
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.phone,

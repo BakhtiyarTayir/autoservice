@@ -18,6 +18,11 @@ class User {
 
   // Фабричный конструктор для создания из JSON (пример)
   factory User.fromJson(Map<String, dynamic> json) {
+    // Проверяем наличие обязательных полей и их типы
+    if (json['username'] == null || json['username'] is! String) {
+      throw FormatException('Invalid JSON: "username" is missing or not a String. Received: ${json['username']}');
+    }
+
     return User(
       id: json['id'], // Проверяем, что id не null
       username: json['username'],

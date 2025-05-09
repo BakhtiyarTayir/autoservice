@@ -14,17 +14,19 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Попробуйте получить текущий authStatusProvider здесь, если это необходимо для инициализации
+    // или передайте его в AuthWrapper, если он там используется для первоначальной логики.
+    // final authStatus = ref.watch(authStatusProvider); // Пример
+
     return MaterialApp(
       title: 'Autoservice App',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
+        fontFamily: 'Roboto', // <--- ДОБАВЬТЕ ЭТУ СТРОКУ
       ),
-      // Используем Consumer для отслеживания статуса аутентификации
-      home: const AuthWrapper(),
       // TODO: Настроить роутинг для навигации между экранами (например, go_router)
+      home: const AuthWrapper(), // Используем AuthWrapper для определения начального экрана
     );
   }
 }
