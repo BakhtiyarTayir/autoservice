@@ -7,8 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart' show Flutter
 // Сервис для взаимодействия с API аутентификации
 class AuthService {
   final Dio _dio = Dio();
-  // Базовый URL вашего API (замените на ваш реальный URL)
-  // Пример: 'http://192.168.1.100:8000/api' или 'https://yourdomain.com/api'
+  // Базовый URL API 
   final String _baseUrl = 'https://api.afix.uz'; // ЗАМЕНИТЬ НА ВАШ URL
 
   // Метод для входа пользователя
@@ -97,22 +96,6 @@ class AuthService {
             responseData['success'] == true &&
             responseData.containsKey('access_token')) {
           // Успешная регистрация, API вернул токен и данные пользователя
-
-          // Важно: Убедитесь, что ваша модель User и ее конструктор User.fromJson
-          // могут корректно обработать структуру responseData.
-          // responseData теперь содержит: "access_token", "firstname", "phone", "username"
-          // Если User.fromJson ожидает другую структуру (например, вложенный объект user),
-          // вам может потребоваться создать объект User вручную здесь.
-          // Пример:
-          // final user = User(
-          //   username: responseData['username'] as String,
-          //   firstName: responseData['firstname'] as String?,
-          //   phone: responseData['phone'] as String?,
-          //   token: responseData['access_token'] as String, // Если токен хранится в User
-          //   // id может быть null, если не возвращается
-          // );
-          // return user;
-
           // Попытка использовать User.fromJson, предполагая, что он адаптирован:
           try {
             print('Registration successful, parsing user data from registration response...');
@@ -175,18 +158,6 @@ class AuthService {
               errorMessage = 'Пользователь с таким именем уже существует или ошибка в поле username.';
             } else {
               // Попытка собрать ошибки валидации по полям, если они есть
-              // Это зависит от формата ошибок валидации вашего API
-              // Например, если ошибки приходят как {'field_name': ['error_message']}
-              // StringBuffer errors = StringBuffer();
-              // responseData.forEach((key, value) {
-              //   if (value is List && value.isNotEmpty) {
-              //     errors.writeln('$key: ${value.join(', ')}');
-              //   } else if (value is String) {
-              //      errors.writeln('$key: $value');
-              //   }
-              // });
-              // if (errors.isNotEmpty) errorMessage = errors.toString();
-              // else errorMessage = 'Ошибка валидации данных.';
               errorMessage = 'Ошибка валидации данных (код ${e.response?.statusCode}).';
             }
           } else {

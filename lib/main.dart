@@ -1,6 +1,7 @@
 import 'package:autoservice/src/features/auth/providers/auth_provider.dart';
 import 'package:autoservice/src/features/auth/ui/screens/login_screen.dart';
-import 'package:autoservice/src/features/home/ui/screens/home_screen.dart';
+// import 'package:autoservice/src/features/home/ui/screens/home_screen.dart'; // Больше не нужен прямой импорт HomeScreen здесь
+import 'package:autoservice/src/shared/widgets/main_app_shell.dart'; // Импортируем новый MainAppShell
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -36,7 +37,7 @@ class AuthWrapper extends ConsumerWidget {
 
     switch (authStatus) {
       case AuthStatus.authenticated:
-        return const HomeScreen(); // Показываем главный экран, если пользователь вошел
+        return const MainAppShell(); // Показываем MainAppShell, если пользователь вошел
       case AuthStatus.unauthenticated:
         return const LoginScreen(); // Показываем экран входа, если пользователь не вошел
       case AuthStatus.unknown:
