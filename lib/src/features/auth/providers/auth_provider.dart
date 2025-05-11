@@ -108,23 +108,70 @@ class AuthNotifier extends StateNotifier<AuthState> {
     String? phone,
     String? firstName,
   }) async {
+    state = state.copyWith(status: AuthStatus.unknown, errorMessage: null);
     try {
-      final user = await _authService.register(
+      // 1. Call AuthService.register, which returns a User object
+      //    and saves the token string to secure storage.
+      final User registeredUser = await _authService.register(
         username: username,
         password: password,
         phone: phone,
         firstName: firstName,
       );
-      // TODO: Возможно, после регистрации нужно автоматически выполнить вход
-      // await login(username, password);
-      // Или просто обновить состояние, если регистрация не подразумевает авто-вход
+
+      // 2. Read the token string that AuthService saved.
+      //    Ensure _tokenStorageKey in AuthNotifier matches 'auth_token'.
+      final String? accessTokenString = await _storage.read(key: _tokenStorageKey);
+
+      if (accessTokenString == null) {
+        // This case should ideally not occur if AuthService.register succeeded
+        // and saved the token.
+        print('Error: Token not found in storage after registration.');
+        // Set an error state or re-throw a more specific exception
+        state = state.copyWith(
+          status: AuthStatus.unauthenticated,
+          errorMessage: 'Ошибка регистрации: токен не был сохранен.',
+          clearToken: true,
+          clearUser: true,
+        );
+        return; // Exit if token is missing
+      }
+
+      // 3. Create a Token object
+      final Token token = Token(accessToken: accessTokenString);
+
+      // 4. Update AuthState
+      // AuthService already saved the token string. If AuthNotifier also writes it
+      // using the same key, it's redundant but harmless.
+      // If AuthNotifier is the sole manager of _storage for token, this write is necessary.
+      // await _storage.write(key: _tokenStorageKey, value: token.accessToken);
+      // For now, we assume AuthService's write is sufficient for storage,
+      // and AuthNotifier primarily needs the Token object for its state.
+
+      print('User registered successfully: ${registeredUser.username}');
+      print('Token retrieved for AuthState: ${token.accessToken}');
+
       state = state.copyWith(
-          // status: AuthStatus.unauthenticated, // Пользователь зарегистрирован, но не вошел
-          // user: user, // Можно сохранить данные пользователя
-          errorMessage: null);
-    } catch (e) {
+        status: AuthStatus.authenticated,
+        token: token, // Use the created Token object
+        user: registeredUser, // Use the User object from registration
+        errorMessage: null, // Clear any previous error message
+      );
+    } catch (e, stackTrace) {
+      // Логируем ошибку для отладки
+      print('Error during registration in AuthNotifier: $e');
+      print(stackTrace);
+
+      String displayErrorMessage = e.toString();
+      if (displayErrorMessage.startsWith('Exception: ')) {
+        displayErrorMessage = displayErrorMessage.substring('Exception: '.length);
+      }
+
       state = state.copyWith(
-        errorMessage: 'Ошибка регистрации: ${e.toString()}',
+        status: AuthStatus.unauthenticated,
+        errorMessage: displayErrorMessage, // Устанавливаем чистое сообщение об ошибке
+        clearToken: true,
+        clearUser: true,
       );
     }
   }
