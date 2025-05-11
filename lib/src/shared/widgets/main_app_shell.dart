@@ -1,26 +1,28 @@
+import 'package:autoservice/src/features/auth/providers/auth_provider.dart'; // Добавляем импорт
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Добавляем импорт
 import 'package:flutter/material.dart';
 import 'package:autoservice/src/features/home/ui/screens/home_screen.dart';
 // Импортируем другие экраны, когда они будут созданы
 // import 'package:autoservice/src/features/catalog/ui/screens/catalog_screen.dart';
 // import 'package:autoservice/src/features/profile/ui/screens/profile_screen.dart';
 
-class MainAppShell extends StatefulWidget {
+// Преобразуем в ConsumerStatefulWidget
+class MainAppShell extends ConsumerStatefulWidget {
   const MainAppShell({super.key});
 
   @override
-  State<MainAppShell> createState() => _MainAppShellState();
+  ConsumerState<MainAppShell> createState() => _MainAppShellState();
 }
 
-class _MainAppShellState extends State<MainAppShell> {
+// Преобразуем в ConsumerState
+class _MainAppShellState extends ConsumerState<MainAppShell> {
   int _selectedIndex = 0;
 
-  // Список виджетов для отображения в теле Scaffold в зависимости от выбранной вкладки
-  // TODO: Заменить Placeholder виджетами на реальные экраны по мере их создания
   static final List<Widget> _widgetOptions = <Widget>[
-    const HomeScreen(), // Главная
-    const Center(child: Text('Каталог (Скоро)')), // Заглушка для Каталога
-    const Center(child: Text('Заявки (Скоро)')), // Заглушка для Заявок
-    const Center(child: Text('Профиль (Скоро)')), // Заглушка для Профиля
+    const HomeScreen(),
+    const Center(child: Text('Каталог (Скоро)')),
+    const Center(child: Text('Заявки (Скоро)')),
+    const Center(child: Text('Профиль (Скоро)')),
   ];
 
   void _onItemTapped(int index) {
@@ -29,13 +31,39 @@ class _MainAppShellState extends State<MainAppShell> {
     });
   }
 
+  // Метод для получения заголовка для AppBar
+  String _getTitleForIndex(int index) {
+    switch (index) {
+      case 0:
+        return 'Главная';
+      case 1:
+        return 'Каталог';
+      case 2:
+        return 'Заявки';
+      case 3:
+        return 'Профиль';
+      default:
+        return 'Autoservice'; // Заголовок по умолчанию
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar будет добавлен позже или будет специфичен для каждого экрана
-      // appBar: AppBar(
-      //   title: Text(_getTitleForIndex(_selectedIndex)), // Заголовок может меняться
-      // ),
+      appBar: AppBar(
+        title: Text(_getTitleForIndex(_selectedIndex)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Выход',
+            onPressed: () async {
+              // Вызываем метод logout из AuthNotifier
+              await ref.read(authProvider.notifier).logout();
+              // После выхода, AuthWrapper автоматически перенаправит на LoginScreen
+            },
+          ),
+        ],
+      ),
       body: IndexedStack( // Используем IndexedStack для сохранения состояния экранов
         index: _selectedIndex,
         children: _widgetOptions,
@@ -68,20 +96,4 @@ class _MainAppShellState extends State<MainAppShell> {
       ),
     );
   }
-
-  // Опционально: метод для получения заголовка для AppBar
-  // String _getTitleForIndex(int index) {
-  //   switch (index) {
-  //     case 0:
-  //       return 'Главная';
-  //     case 1:
-  //       return 'Каталог';
-  //     case 2:
-  //       return 'Заявки';
-  //     case 3:
-  //       return 'Профиль';
-  //     default:
-  //       return 'Autoservice';
-  //   }
-  // }
 }
