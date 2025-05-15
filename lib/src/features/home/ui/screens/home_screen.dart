@@ -45,77 +45,6 @@ class HomeScreen extends ConsumerWidget {
         _buildPartnerSlider(context, allPartnersAsync),
         const SizedBox(height: 16),
 
-        // 0. Список всех автосервисов
-        _buildSectionCard(
-          context: context,
-          title: 'Мои автосервисы',
-          icon: Icons.business_center_outlined,
-          cardColor: cardColors.isNotEmpty ? cardColors[0] : Theme.of(context).cardColor,
-          content: allPartnersAsync.when(
-            data: (partners) {
-              if (partners.isEmpty) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 20),
-                    const Icon(Icons.store_mall_directory_outlined, 
-                      size: 48, color: Colors.grey),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Автосервисы не найдены',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'В данный момент у вас нет зарегистрированных автосервисов',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.add_business),
-                      label: const Text('Добавить автосервис'),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Переход к добавлению автосервиса (TODO)')),
-                        );
-                      },
-                    ),
-                  ],
-                );
-              }
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(), // чтобы избежать конфликта с родительским ListView
-                itemCount: partners.length,
-                itemBuilder: (context, index) {
-                  final partner = partners[index];
-                  return PartnerListItem(partner: partner);
-                },
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, stack) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Не удалось загрузить список автосервисов:',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Text(err.toString(), style: const TextStyle(color: Colors.red)),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Повторить'),
-                  onPressed: () {
-                    ref.refresh(allPartnersProvider);
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-
         // 1. Обзор и управление заявками
         _buildSectionCard(
           context: context,
@@ -217,137 +146,159 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildPartnerSlider(BuildContext context, AsyncValue<List<Partner>> allPartnersAsync) {
-    return allPartnersAsync.when(
-      data: (partners) {
-        if (partners.isEmpty) {
-          return const SizedBox.shrink(); // Не отображаем ничего, если нет партнеров
-        }
-        return SizedBox(
-          height: 180, // Высота слайдера, можно настроить
-          child: PageView.builder(
-            itemCount: partners.length,
-            itemBuilder: (context, index) {
-              final partner = partners[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                elevation: 4.0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          // Logo or default icon
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8.0),
-                            child: partner.logo != null
-                                ? Image.network(
-                                    'https://api.afix.uz/${partner.logo}',
-                                    width: 60,
-                                    height: 60,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => Container(
-                                      width: 60,
-                                      height: 60,
-                                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                      child: Icon(Icons.storefront, color: Theme.of(context).colorScheme.primary),
-                                    ),
-                                  )
-                                : Container(
-                                    width: 60,
-                                    height: 60,
-                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                    child: Icon(Icons.storefront, color: Theme.of(context).colorScheme.primary),
-                                  ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  partner.name,
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  partner.address,
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      // Additional info or buttons
-                      Row(
-                        children: [
-                          Icon(Icons.phone, size: 16, color: Theme.of(context).colorScheme.primary),
-                          const SizedBox(width: 4),
-                          Text(partner.phone, style: Theme.of(context).textTheme.bodySmall),
-                          const Spacer(),
-                          ElevatedButton(
-                            onPressed: () {
-                              // Navigate to partner details
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Переход к партнеру: ${partner.name} (TODO)')),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              minimumSize: const Size(0, 32),
-                            ),
-                            child: const Text('Подробнее'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          child: Row(
+            children: [
+              Icon(Icons.car_repair, size: 28, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Мои автосервисы',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
-        );
-      },
-      loading: () => const SizedBox(
-        height: 180, // Такая же высота, как у слайдера, для консистентности
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      error: (err, stack) => SizedBox(
-        height: 180,
-        child: Card(
-          margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-          color: Colors.red.shade50,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, color: Colors.red, size: 32),
-                const SizedBox(height: 8),
-                const Text('Ошибка загрузки данных', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Consumer(
-                  builder: (context, ref, _) => TextButton.icon(
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Обновить'),
-                    onPressed: () => ref.refresh(allPartnersProvider),
-                  ),
+        ),
+        allPartnersAsync.when(
+          data: (partners) {
+            if (partners.isEmpty) {
+              return const SizedBox.shrink(); // Не отображаем ничего, если нет партнеров
+            }
+            return SizedBox(
+              height: 180, // Высота слайдера, можно настроить
+              child: PageView.builder(
+                itemCount: partners.length,
+                controller: PageController(
+                  viewportFraction: 0.85, // Показывать часть следующего элемента
                 ),
-              ],
+                padEnds: true, // Добавление отступов для первого и последнего элементов
+                itemBuilder: (context, index) {
+                  final partner = partners[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                    elevation: 4.0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              // Logo or default icon
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8.0),
+                                child: partner.logo != null
+                                    ? Image.network(
+                                        'https://api.afix.uz/${partner.logo}',
+                                        width: 100,
+                                        height: 60,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (context, error, stackTrace) => Container(
+                                          width: 60,
+                                          height: 60,
+                                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                          child: Icon(Icons.storefront, color: Theme.of(context).colorScheme.primary),
+                                        ),
+                                      )
+                                    : Container(
+                                        width: 60,
+                                        height: 60,
+                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                        child: Icon(Icons.storefront, color: Theme.of(context).colorScheme.primary),
+                                      ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      partner.name,
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      partner.address,
+                                      style: Theme.of(context).textTheme.bodyMedium,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          // Additional info or buttons
+                          Row(
+                            children: [
+                              Icon(Icons.phone, size: 16, color: Theme.of(context).colorScheme.primary),
+                              const SizedBox(width: 4),
+                              Text(partner.phone, style: Theme.of(context).textTheme.bodySmall),
+                              const Spacer(),
+                              ElevatedButton(
+                                onPressed: () {
+                                  // Navigate to partner details
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Переход к партнеру: ${partner.name} (TODO)')),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  minimumSize: const Size(0, 32),
+                                ),
+                                child: const Text('Подробнее'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+          loading: () => const SizedBox(
+            height: 180, // Такая же высота, как у слайдера, для консистентности
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (err, stack) => SizedBox(
+            height: 180,
+            child: Card(
+              margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              color: Colors.red.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 32),
+                    const SizedBox(height: 8),
+                    const Text('Ошибка загрузки данных', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Consumer(
+                      builder: (context, ref, _) => TextButton.icon(
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Обновить'),
+                        onPressed: () => ref.refresh(allPartnersProvider),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 
