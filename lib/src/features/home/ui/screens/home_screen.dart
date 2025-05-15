@@ -172,13 +172,13 @@ class HomeScreen extends ConsumerWidget {
               child: PageView.builder(
                 itemCount: partners.length,
                 controller: PageController(
-                  viewportFraction: 0.85, // Показывать часть следующего элемента
+                  viewportFraction: 0.92, // Увеличиваю заполнение экрана
                 ),
-                padEnds: true, // Добавление отступов для первого и последнего элементов
+                padEnds: false, // Отключаю дополнительные отступы для крайних элементов
                 itemBuilder: (context, index) {
                   final partner = partners[index];
                   return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                    margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), // Уменьшаю горизонтальные отступы
                     elevation: 4.0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                     child: Padding(
