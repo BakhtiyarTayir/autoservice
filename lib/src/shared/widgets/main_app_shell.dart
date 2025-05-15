@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:autoservice/src/features/home/ui/screens/home_screen.dart';
 import 'package:autoservice/src/features/requests/ui/screens/user_requests_screen.dart';
+import 'package:autoservice/src/features/partner/ui/screens/partner_list_screen.dart';
+import 'package:autoservice/src/shared/providers/navigation_providers.dart'; // Импортируем провайдер
 
 
 
@@ -15,56 +17,37 @@ class MainAppShell extends ConsumerStatefulWidget {
 
 
 class _MainAppShellState extends ConsumerState<MainAppShell> {
-  int _selectedIndex = 0;
-
-  static final List<Widget> _widgetOptions = <Widget>[
-    const HomeScreen(),
-    const Center(child: Text('Каталог (Скоро)')),
-    const UserRequestsScreen(),
-    const Center(child: Text('Профиль (Скоро)')),
+  // Список виджетов выносим за пределы метода build
+  static const List<Widget> _widgetOptions = <Widget>[
+    HomeScreen(),
+    PartnerListScreen(),
+    UserRequestsScreen(),
+    Center(child: Text('Профиль (Скоро)')),
   ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-
-  String _getTitleForIndex(int index) {
-    switch (index) {
-      case 0:
-        return 'Главная';
-      case 1:
-        return 'Каталог';
-      case 2:
-        return 'Заявки';
-      case 3:
-        return 'Профиль';
-      default:
-        return 'Autoservice'; // Заголовок по умолчанию
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    // Используем провайдер вместо локального состояния
+    final selectedIndex = ref.watch(selectedTabProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_getTitleForIndex(_selectedIndex)),
+        title: Text(_getTitleForIndex(selectedIndex)),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 2,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Выход',
             onPressed: () async {
-              // Вызываем метод logout из AuthNotifier
               await ref.read(authStateProvider.notifier).logout();
-              // После выхода, AuthWrapper автоматически перенаправит на LoginScreen
             },
           ),
         ],
       ),
-      body: IndexedStack( // Используем IndexedStack для сохранения состояния экранов
-        index: _selectedIndex,
+      body: IndexedStack(
+        index: selectedIndex,
         children: _widgetOptions,
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -74,8 +57,8 @@ class _MainAppShellState extends ConsumerState<MainAppShell> {
             label: 'Главная',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.list_alt),
-            label: 'Каталог',
+            icon: Icon(Icons.car_repair),
+            label: 'Автосервисы',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.assignment),
@@ -86,13 +69,31 @@ class _MainAppShellState extends ConsumerState<MainAppShell> {
             label: 'Профиль',
           ),
         ],
-        currentIndex: _selectedIndex,
+        currentIndex: selectedIndex,
         selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed, // Чтобы все метки были видны
-        showUnselectedLabels: true, // Показываем метки для невыбранных элементов
+        onTap: (index) {
+          // Обновляем состояние провайдера
+          ref.read(selectedTabProvider.notifier).state = index;
+        },
+        type: BottomNavigationBarType.fixed,
+        showUnselectedLabels: true,
       ),
     );
+  }
+
+  String _getTitleForIndex(int index) {
+    switch (index) {
+      case 0:
+        return 'Главная';
+      case 1:
+        return 'Автосервисы';
+      case 2:
+        return 'Заявки';
+      case 3:
+        return 'Профиль';
+      default:
+        return 'Autoservice';
+    }
   }
 }

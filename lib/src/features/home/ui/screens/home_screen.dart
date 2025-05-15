@@ -6,6 +6,7 @@ import 'package:autoservice/src/features/auth/providers/current_partner_id_provi
 import 'package:autoservice/src/features/requests/data/user_request_model.dart';
 import 'package:autoservice/src/features/partner/ui/widgets/partner_list_item.dart'; 
 import 'package:autoservice/src/features/requests/ui/screens/partner_requests_screen.dart';
+import 'package:autoservice/src/shared/providers/navigation_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -42,7 +43,7 @@ class HomeScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(16.0),
       children: <Widget>[
         // НОВЫЙ СЛАЙДЕР АВТОСЕРВИСОВ
-        _buildPartnerSlider(context, allPartnersAsync),
+        _buildPartnerSlider(context, allPartnersAsync, ref),
         const SizedBox(height: 16),
 
         // 1. Обзор и управление заявками
@@ -145,7 +146,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPartnerSlider(BuildContext context, AsyncValue<List<Partner>> allPartnersAsync) {
+  Widget _buildPartnerSlider(BuildContext context, AsyncValue<List<Partner>> allPartnersAsync, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -167,18 +168,57 @@ class HomeScreen extends ConsumerWidget {
             if (partners.isEmpty) {
               return const SizedBox.shrink(); // Не отображаем ничего, если нет партнеров
             }
+            
+            // Проверяем, нужно ли добавлять слайд "Посмотреть все"
+            final bool showViewAllSlide = partners.length > 3;
+            final int totalItems = showViewAllSlide ? partners.length + 1 : partners.length;
+            
             return SizedBox(
               height: 180, // Высота слайдера, можно настроить
               child: PageView.builder(
-                itemCount: partners.length,
+                itemCount: totalItems,
                 controller: PageController(
                   viewportFraction: 0.92, // Увеличиваю заполнение экрана
                 ),
                 padEnds: false, // Отключаю дополнительные отступы для крайних элементов
                 itemBuilder: (context, index) {
+                  // Если это последний элемент и нужно показать "Посмотреть все"
+                  if (showViewAllSlide && index == partners.length) {
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                      elevation: 4.0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.more_horiz, size: 48, color: Colors.grey),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'У вас еще больше автосервисов',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.visibility),
+                              label: const Text('Посмотреть все'),
+                              onPressed: () {
+                                // Переключаем вкладку через провайдер (это изменит BottomNavigationBar)
+                                ref.read(selectedTabProvider.notifier).state = 1;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  
+                  // Обычный слайд с автосервисом
                   final partner = partners[index];
                   return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), // Уменьшаю горизонтальные отступы
+                    margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
                     elevation: 4.0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                     child: Padding(
