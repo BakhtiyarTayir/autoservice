@@ -1,19 +1,26 @@
 // Для jsonDecode
+import 'dart:convert'; // Для jsonDecode
 import 'package:dio/dio.dart';
 import 'package:autoservice/src/features/auth/models/token_model.dart';
 import 'package:autoservice/src/features/auth/models/user_model.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart' show FlutterSecureStorage;
+import 'package:autoservice/src/features/auth/services/token_storage.dart'; // Импорт TokenStorage
+// import 'package:flutter_secure_storage/flutter_secure_storage.dart' show FlutterSecureStorage; // Больше не нужен напрямую
 
 // Сервис для взаимодействия с API аутентификации
 class AuthService {
   final Dio _dio = Dio();
+  final TokenStorage _tokenStorage; // Внедряем TokenStorage
   // Базовый URL API 
   final String _baseUrl = 'https://api.afix.uz'; // ЗАМЕНИТЬ НА ВАШ URL
 
+  // Конструктор с TokenStorage
+  AuthService(this._tokenStorage);
+
   // Метод для входа пользователя
-  // Возвращает Token при успехе, иначе выбрасывает исключение
-  Future<Token> login(String username, String password) async {
+  // Возвращает User при успехе, иначе выбрасывает исключение
+  Future<User> login(String username, String password) async {
     try {
+      print('AuthService: Attempting login for user: $username');
       final response = await _dio.post(
         '$_baseUrl/auth/login', // Убедитесь, что эндпоинт верный
         data: {
@@ -24,10 +31,21 @@ class AuthService {
 
       if (response.statusCode == 200 && response.data != null) {
         // Успешный вход, парсим токен
-        // Предполагаем, что API возвращает JSON вида {'access_token': '...'}
-        return Token.fromJson(response.data);
+        print('AuthService: Login successful, response data: ${response.data}');
+        final tokenModel = TokenModel.fromJson(response.data);
+        await _tokenStorage.saveToken(tokenModel.accessToken);
+        print('AuthService: Token saved: ${tokenModel.accessToken.substring(0, 15)}...');
+
+        // Получаем данные пользователя, включая partnerId
+        final user = await fetchUserDetailsOnLoad(tokenModel.accessToken);
+        if (user.partnerId != null) {
+          await _tokenStorage.savePartnerId(user.partnerId!);
+          print('AuthService: Partner ID saved: ${user.partnerId}');
+        }
+        return user;
       } else {
         // Обработка других статусов или пустого ответа
+        print('AuthService: Login failed, status code: ${response.statusCode}, data: ${response.data}');
         throw DioException(
           requestOptions: response.requestOptions,
           response: response,
@@ -37,19 +55,25 @@ class AuthService {
       }
     } on DioException catch (e) {
       // Обработка ошибок Dio (сеть, таймауты, ошибки сервера)
-      print('Dio error during login: ${e.message}');
+      print('AuthService: Dio error during login: ${e.message}');
+      print('AuthService: Response status: ${e.response?.statusCode}');
+      print('AuthService: Response data: ${e.response?.data}');
+      
       String errorMessage = 'Ошибка входа.';
       if (e.response?.statusCode == 401 || e.response?.statusCode == 400) {
         errorMessage = 'Неверное имя пользователя или пароль.';
-      } else if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.sendTimeout || e.type == DioExceptionType.receiveTimeout || e.type == DioExceptionType.connectionError) {
+      } else if (e.type == DioExceptionType.connectionTimeout || 
+                e.type == DioExceptionType.sendTimeout || 
+                e.type == DioExceptionType.receiveTimeout || 
+                e.type == DioExceptionType.connectionError) {
         errorMessage = 'Ошибка сети. Проверьте подключение к интернету.';
       }
       // Перебрасываем исключение с более понятным сообщением
       throw Exception(errorMessage);
     } catch (e) {
       // Обработка других неожиданных ошибок
-      print('Unexpected error during login: $e');
-      throw Exception('Произошла непредвиденная ошибка.');
+      print('AuthService: Unexpected error during login: $e');
+      throw Exception('Произошла непредвиденная ошибка при входе: $e');
     }
   }
 
@@ -86,8 +110,6 @@ class AuthService {
       print('Registration response status: ${response.statusCode}');
       print('Registration response data: ${response.data}');
 
-      // Проверяем статус ответа
-      // API может вернуть 200 OK или 201 Created при успехе
       if ((response.statusCode == 200 || response.statusCode == 201) && response.data != null) {
         final responseData = response.data;
 
@@ -95,42 +117,33 @@ class AuthService {
             responseData.containsKey('success') &&
             responseData['success'] == true &&
             responseData.containsKey('access_token')) {
-          // Успешная регистрация, API вернул токен и данные пользователя
-          // Попытка использовать User.fromJson, предполагая, что он адаптирован:
-          try {
-            print('Registration successful, parsing user data from registration response...');
-            // Передаем весь responseData в User.fromJson
-            // User.fromJson должен уметь извлечь 'access_token' и сохранить его,
-            // а также остальные поля: 'firstname', 'phone', 'username'.
-            final user = User.fromJson(responseData);
+          
+          final String accessToken = responseData['access_token'] as String;
+          await _tokenStorage.saveToken(accessToken);
+          print('AuthService: Token saved after registration: $accessToken');
 
-            // Если токен не является частью модели User, но его нужно сохранить отдельно:
-            // First define FlutterSecureStorage at class level before using it
-            final _secureStorage = FlutterSecureStorage();
-            await _secureStorage.write(key: 'auth_token', value: responseData['access_token'] as String);
-            print('User created from registration response: ${user.username}');
-            return user;
-          } catch (e) {
-            print('Error parsing User from registration response: $e');
-            print('Response data was: $responseData');
-            throw Exception('Ошибка обработки данных пользователя после регистрации.');
+          // User.fromJson должен уметь извлечь 'partner_id' если он есть в responseData
+          final user = User.fromJson(responseData); 
+          print('User created from registration response: ${user.username}, Partner ID: ${user.partnerId}');
+
+          if (user.partnerId != null) {
+            await _tokenStorage.savePartnerId(user.partnerId!);
+            print('AuthService: Partner ID saved after registration: ${user.partnerId}');
           }
+          return user;
 
         } else if (responseData is Map<String, dynamic> &&
                    responseData.containsKey('success') &&
                    responseData['success'] == false &&
                    responseData.containsKey('message')) {
-          // Ошибка валидации или другая ошибка от API с success: false
           final errorMessage = responseData['message'].toString();
           print('Registration failed (API success: false): $errorMessage');
           throw Exception(errorMessage);
         } else {
-          // Неожиданный формат ответа
           print('Registration failed: Unexpected response format. Response: $responseData');
           throw Exception('Ошибка регистрации: Неожиданный ответ сервера.');
         }
       } else {
-        // Обработка других статусов HTTP
         print('Registration failed with status code ${response.statusCode}. Response: ${response.data}');
         throw DioException(
           requestOptions: response.requestOptions,
@@ -140,11 +153,10 @@ class AuthService {
         );
       }
     } on DioException catch (e) {
-      // Обработка ошибок Dio (сеть, таймауты, ошибки сервера и т.д.)
       print('Dio error during registration: ${e.message}');
       print('Dio error response data: ${e.response?.data}');
       String errorMessage = 'Ошибка регистрации.';
-      if (e.response?.statusCode == 400 || e.response?.statusCode == 422) { // 422 Unprocessable Entity часто для ошибок валидации
+      if (e.response?.statusCode == 400 || e.response?.statusCode == 422) { 
         try {
           final responseData = e.response?.data;
           if (responseData is Map<String, dynamic>) {
@@ -152,12 +164,11 @@ class AuthService {
               errorMessage = responseData['message'].toString();
             } else if (responseData.containsKey('detail')) {
               errorMessage = responseData['detail'].toString();
-            } else if (responseData.containsKey('message')) { // Общий ключ message
+            } else if (responseData.containsKey('message')) { 
               errorMessage = responseData['message'].toString();
             } else if (responseData.containsKey('username')) {
               errorMessage = 'Пользователь с таким именем уже существует или ошибка в поле username.';
             } else {
-              // Попытка собрать ошибки валидации по полям, если они есть
               errorMessage = 'Ошибка валидации данных (код ${e.response?.statusCode}).';
             }
           } else {
@@ -174,7 +185,6 @@ class AuthService {
       }
       throw Exception(errorMessage);
     } catch (e) {
-      // Обработка других неожиданных ошибок
       print('Unexpected error during registration: $e');
       if (e is TypeError) {
         print('Type error details: ${e.stackTrace}');
@@ -184,13 +194,10 @@ class AuthService {
     }
   }
 
-  // Метод _fetchUserDetails может все еще быть нужен для логина или обновления данных
-  // Убедитесь, что эндпоинт для него корректен, если он существует
-  Future<User> _fetchUserDetails(String token) async {
+  Future<User> fetchUserDetailsOnLoad(String token) async {
     try {
-      print('Fetching user details with token...');
-      // ЗАМЕНИТЕ '/auth/user' НА ПРАВИЛЬНЫЙ ЭНДПОИНТ ВАШЕГО API для получения данных пользователя
-      const String userDetailsEndpoint = '/auth/user'; // Пример
+      print('AuthService: Fetching user details with token');
+      const String userDetailsEndpoint = '/auth/user';
 
       final response = await _dio.get(
         '$_baseUrl$userDetailsEndpoint',
@@ -198,16 +205,11 @@ class AuthService {
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        print('User details fetched successfully.');
-        // Предполагается, что этот эндпоинт возвращает полную информацию о пользователе
-        // и User.fromJson может ее обработать.
-        // Также, если токен не является частью User, его нужно передать или добавить.
-        Map<String, dynamic> userData = response.data as Map<String, dynamic>;
-        // Если токен нужно добавить в User модель из этого ответа:
-        // userData['access_token'] = token; // или как он там называется в User.fromJson
+        print('AuthService: User details fetched successfully: ${response.data}');
+        Map<String, dynamic> userData = response.data as Map<String, dynamic>;        
         return User.fromJson(userData);
       } else {
-        print('Failed to fetch user details. Status: ${response.statusCode}, Data: ${response.data}');
+        print('AuthService: Failed to fetch user details. Status: ${response.statusCode}, Data: ${response.data}');
         throw DioException(
           requestOptions: response.requestOptions,
           response: response,
@@ -216,43 +218,61 @@ class AuthService {
         );
       }
     } on DioException catch (e) {
-      print('Dio error fetching user details: ${e.message}');
-      print('Dio error response data: ${e.response?.data}');
+      print('AuthService: Dio error fetching user details: ${e.message}');
+      print('AuthService: Response status: ${e.response?.statusCode}');
+      print('AuthService: Response data: ${e.response?.data}');
+      
       String errorMessage = 'Ошибка при получении данных пользователя.';
-       if (e.response?.statusCode == 401) {
+      if (e.response?.statusCode == 401) {
         errorMessage = 'Сессия истекла или недействительна. Пожалуйста, войдите снова.';
+        // Здесь можно очистить токен, чтобы пользователь точно перешел на экран входа
+        await _tokenStorage.deleteAll(); 
       } else if (e.response?.statusCode == 404) {
         errorMessage = 'Эндпоинт для получения данных пользователя не найден.';
-      } else if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.sendTimeout || e.type == DioExceptionType.receiveTimeout || e.type == DioExceptionType.connectionError) {
+      } else if (e.type == DioExceptionType.connectionTimeout || 
+                e.type == DioExceptionType.sendTimeout || 
+                e.type == DioExceptionType.receiveTimeout || 
+                e.type == DioExceptionType.connectionError) {
         errorMessage = 'Ошибка сети при получении данных пользователя.';
       }
       throw Exception(errorMessage);
     } catch (e) {
-      print('Unexpected error fetching user details: $e');
+      print('AuthService: Unexpected error fetching user details: $e');
       if (e is TypeError) {
-        print('Type error details: ${e.stackTrace}');
+        print('AuthService: Type error details: ${e.stackTrace}');
         throw Exception('Ошибка обработки данных пользователя. Проверьте модель User.');
       }
-      throw Exception('Непредвиденная ошибка при получении данных пользователя.');
+      throw Exception('Непредвиденная ошибка при получении данных пользователя: $e');
     }
   }
 
-  // Метод для выхода пользователя (если требуется инвалидация токена на бэкенде)
-  Future<void> logout(String token) async {
+  // Метод для выхода пользователя
+  Future<void> logout() async {
     try {
-      // Пример: Отправка запроса на эндпоинт выхода
-      // await _dio.post(
-      //   '$_baseUrl/auth/logout',
-      //   options: Options(headers: {'Authorization': 'Bearer $token'}),
-      // );
-      print('Logout request sent for token (simulated): $token');
-      // В реальном приложении здесь будет запрос на сервер
-      await Future.delayed(const Duration(milliseconds: 100)); // Имитация
-    } on DioException catch (e) {
-      // Ошибки при выходе обычно можно игнорировать или просто логировать
-      print('Dio error during logout: ${e.message}');
+      print('AuthService: Logging out user');
+      // Очищаем токен
+      await _tokenStorage.deleteAll();
+      print('AuthService: All tokens and data cleared');
+      
+      // Если у API есть эндпоинт для логаута (чтобы инвалидировать токен на сервере)
+      // то можно выполнить запрос к нему здесь, например:
+      // 
+      // final token = await _tokenStorage.getToken();
+      // if (token != null) {
+      //   try {
+      //     await _dio.post(
+      //       '$_baseUrl/auth/logout',
+      //       options: Options(headers: {'Authorization': 'Bearer $token'}),
+      //     );
+      //   } catch (e) {
+      //     print('Error during API logout: $e');
+      //     // Игнорируем ошибку при логауте на сервере, т.к. локально мы все равно удалили токен
+      //   }
+      // }
     } catch (e) {
-      print('Unexpected error during logout: $e');
+      print('AuthService: Error during logout: $e');
+      // Перебрасываем ошибку, чтобы AuthNotifier мог обработать её
+      throw Exception('Ошибка при выходе: $e');
     }
   }
 }

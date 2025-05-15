@@ -6,6 +6,7 @@ class User {
   final String? firstName; // Имя
   final String? lastName; // Фамилия
   final String? phone; // Телефон
+  final String? partnerId; // ID связанного партнера (автосервиса)
 
   User({
     this.id, // Убираем required, так как id может быть null
@@ -14,6 +15,7 @@ class User {
     this.firstName,
     this.lastName,
     this.phone,
+    this.partnerId,
   });
 
   // Фабричный конструктор для создания из JSON (пример)
@@ -24,12 +26,13 @@ class User {
     }
 
     return User(
-      id: json['id'], // Проверяем, что id не null
-      username: json['username'],
-      email: json['email'],
-      firstName: json['first_name'] ?? json['firstname'], // Проверяем оба возможных ключа
-      lastName: json['last_name'],
-      phone: json['phone'],
+      id: json['id'] as int?, // Проверяем, что id не null и является int
+      username: json['username'] as String,
+      email: json['email'] as String?,
+      firstName: (json['first_name'] ?? json['firstname']) as String?,
+      lastName: json['last_name'] as String?,
+      phone: json['phone'] as String?,
+      partnerId: json['partner_id'] as String?, // Предполагаем, что API возвращает partner_id
     );
   }
 
@@ -45,6 +48,7 @@ class User {
     if (firstName != null) data['first_name'] = firstName;
     if (lastName != null) data['last_name'] = lastName;
     if (phone != null) data['phone'] = phone;
+    if (partnerId != null) data['partner_id'] = partnerId;
 
     return data;
   }

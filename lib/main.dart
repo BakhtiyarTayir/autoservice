@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
-  // TODO: Рассмотреть возможность инициализации служб здесь (например, Firebase)
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -20,14 +19,14 @@ class MyApp extends ConsumerWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
-        fontFamily: 'MontserratAce', // Это уже настроено верно
+        fontFamily: 'MontserratAce', 
       ),
       home: const AuthWrapper(),
     );
   }
 }
 
-// Виджет-обертка для управления отображением экрана в зависимости от статуса аутентификации
+
 class AuthWrapper extends ConsumerWidget {
   const AuthWrapper({super.key});
 
@@ -37,12 +36,11 @@ class AuthWrapper extends ConsumerWidget {
 
     switch (authStatus) {
       case AuthStatus.authenticated:
-        return const MainAppShell(); // Показываем MainAppShell, если пользователь вошел
+        return const MainAppShell(); 
       case AuthStatus.unauthenticated:
-        return const LoginScreen(); // Показываем экран входа, если пользователь не вошел
+        return const LoginScreen(); 
       case AuthStatus.unknown:
       default:
-        // Показываем индикатор загрузки, пока статус неизвестен (например, при проверке токена)
         return const Scaffold(
           body: Center(
             child: CircularProgressIndicator(),

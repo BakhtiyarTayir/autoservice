@@ -34,8 +34,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    final authNotifier = ref.read(authProvider.notifier);
+    final authState = ref.watch(authStateProvider);
+    final authNotifier = ref.read(authStateProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
@@ -152,7 +152,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         );
 
                         // Проверяем состояние после попытки регистрации
-                        final currentAuthState = ref.read(authProvider);
+                        final currentAuthState = ref.read(authStateProvider);
                         if (currentAuthState.status == AuthStatus.authenticated && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Регистрация прошла успешно!')), // Обновленное сообщение

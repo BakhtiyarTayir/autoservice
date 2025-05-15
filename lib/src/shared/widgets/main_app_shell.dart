@@ -1,12 +1,11 @@
-import 'package:autoservice/src/features/auth/providers/auth_provider.dart'; // Добавляем импорт
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // Добавляем импорт
+import 'package:autoservice/src/features/auth/providers/auth_provider.dart'; 
+import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import 'package:flutter/material.dart';
 import 'package:autoservice/src/features/home/ui/screens/home_screen.dart';
-// Импортируем другие экраны, когда они будут созданы
-// import 'package:autoservice/src/features/catalog/ui/screens/catalog_screen.dart';
-// import 'package:autoservice/src/features/profile/ui/screens/profile_screen.dart';
+import 'package:autoservice/src/features/requests/ui/screens/user_requests_screen.dart';
 
-// Преобразуем в ConsumerStatefulWidget
+
+
 class MainAppShell extends ConsumerStatefulWidget {
   const MainAppShell({super.key});
 
@@ -14,14 +13,14 @@ class MainAppShell extends ConsumerStatefulWidget {
   ConsumerState<MainAppShell> createState() => _MainAppShellState();
 }
 
-// Преобразуем в ConsumerState
+
 class _MainAppShellState extends ConsumerState<MainAppShell> {
   int _selectedIndex = 0;
 
   static final List<Widget> _widgetOptions = <Widget>[
     const HomeScreen(),
     const Center(child: Text('Каталог (Скоро)')),
-    const Center(child: Text('Заявки (Скоро)')),
+    const UserRequestsScreen(),
     const Center(child: Text('Профиль (Скоро)')),
   ];
 
@@ -31,7 +30,7 @@ class _MainAppShellState extends ConsumerState<MainAppShell> {
     });
   }
 
-  // Метод для получения заголовка для AppBar
+
   String _getTitleForIndex(int index) {
     switch (index) {
       case 0:
@@ -58,7 +57,7 @@ class _MainAppShellState extends ConsumerState<MainAppShell> {
             tooltip: 'Выход',
             onPressed: () async {
               // Вызываем метод logout из AuthNotifier
-              await ref.read(authProvider.notifier).logout();
+              await ref.read(authStateProvider.notifier).logout();
               // После выхода, AuthWrapper автоматически перенаправит на LoginScreen
             },
           ),

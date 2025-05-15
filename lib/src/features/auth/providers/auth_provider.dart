@@ -2,16 +2,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:autoservice/src/features/auth/models/token_model.dart';
 import 'package:autoservice/src/features/auth/models/user_model.dart';
 import 'package:autoservice/src/features/auth/services/auth_service.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:autoservice/src/features/auth/services/token_storage.dart'; // Импорт TokenStorage
+// import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Больше не используется напрямую
 
 // Состояние аутентификации
-enum AuthStatus { unknown, authenticated, unauthenticated }
+enum AuthStatus { unknown, authenticated, unauthenticated, loading }
 
 // Класс состояния аутентификации
 class AuthState {
   final AuthStatus status;
   final User? user;
-  final Token? token;
+  final TokenModel? token; // Используем TokenModel вместо Token
   final String? errorMessage;
 
   AuthState({
@@ -24,55 +25,84 @@ class AuthState {
   AuthState copyWith({
     AuthStatus? status,
     User? user,
-    Token? token,
+    TokenModel? token, // Используем TokenModel
     String? errorMessage,
-    bool clearToken = false, // Флаг для явного сброса токена
-    bool clearUser = false, // Флаг для явного сброса пользователя
+    bool clearToken = false, 
+    bool clearUser = false, 
   }) {
     return AuthState(
       status: status ?? this.status,
       user: clearUser ? null : user ?? this.user,
       token: clearToken ? null : token ?? this.token,
-      errorMessage: errorMessage, // Ошибку не копируем по умолчанию
+      errorMessage: errorMessage ?? (status == AuthStatus.authenticated ? null : this.errorMessage), // Сбрасываем ошибку при успехе или если не передана новая
     );
   }
 }
 
-// Провайдер сервиса аутентификации (для удобства)
-final authServiceProvider = Provider<AuthService>((ref) => AuthService());
+// Провайдер для TokenStorage (уже есть в dio_provider.dart, но здесь тоже нужен для AuthNotifier)
+final tokenStorageProvider = Provider<TokenStorage>((ref) => TokenStorage());
 
-// Провайдер для Secure Storage
-final secureStorageProvider = Provider<FlutterSecureStorage>((ref) => const FlutterSecureStorage());
-
-// Ключ для хранения токена
-const String _tokenStorageKey = 'auth_token';
+// Провайдер сервиса аутентификации
+final authServiceProvider = Provider<AuthService>((ref) {
+  final tokenStorage = ref.watch(tokenStorageProvider);
+  return AuthService(tokenStorage); // Передаем TokenStorage в AuthService
+});
 
 // StateNotifier для управления состоянием аутентификации
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService;
-  final FlutterSecureStorage _storage;
+  final TokenStorage _tokenStorage; // Используем TokenStorage напрямую
 
-  AuthNotifier(this._authService, this._storage) : super(AuthState()) {
-    _loadToken(); // Пытаемся загрузить токен при инициализации
+  AuthNotifier(this._authService, this._tokenStorage) : super(AuthState(status: AuthStatus.loading)) {
+    _initializeAuthStatus(); 
   }
 
-  // Попытка загрузить сохраненный токен
-  Future<void> _loadToken() async {
+  // Инициализация состояния аутентификации
+  Future<void> _initializeAuthStatus() async {
     try {
-      final savedToken = await _storage.read(key: _tokenStorageKey);
-      if (savedToken != null && savedToken.isNotEmpty) {
-        // TODO: Возможно, стоит проверить валидность токена на сервере
-        print('Token loaded from storage: $savedToken');
+      final tokenString = await _tokenStorage.getToken();
+      if (tokenString != null && tokenString.isNotEmpty) {
+        print('AuthNotifier: Token found in storage: $tokenString');
+        // Попытка получить данные пользователя, если токен есть
+        // Это предполагает, что у вас есть метод для получения User по токену
+        // или что partnerId также хранится и может быть использован для создания User объекта
+        // Для простоты, если токен есть, считаем пользователя аутентифицированным
+        // и пытаемся загрузить partnerId для User объекта
+        final partnerId = await _tokenStorage.getPartnerId();
+        // Здесь можно попытаться загрузить полные данные пользователя, если это необходимо
+        // Например, вызвав _authService._fetchUserDetails(tokenString)
+        // Но для currentPartnerIdProvider достаточно partnerId
+        
+        // Создаем временного пользователя с partnerId, если он есть
+        // В реальном приложении здесь должен быть полноценный объект User, полученный с сервера
+        User? loadedUser;
+        if (partnerId != null) {
+          // Если username и другие поля не известны на этом этапе, 
+          // можно создать User с теми данными, что есть, или загрузить их.
+          // Для примера, создадим User с username='cached_user' если partnerId есть.
+          // В идеале, _fetchUserDetails должен вызываться здесь.
+          try {
+            loadedUser = await _authService.fetchUserDetailsOnLoad(tokenString);
+             print('AuthNotifier: User details loaded on init: ${loadedUser?.username}, Partner ID: ${loadedUser?.partnerId}');
+          } catch (e) {
+            print('AuthNotifier: Failed to load user details on init: $e. Clearing token.');
+            await _tokenStorage.deleteAll(); // Если не удалось получить юзера, токен невалиден
+            state = state.copyWith(status: AuthStatus.unauthenticated, clearUser: true, clearToken: true);
+            return;
+          }
+        }
+
         state = state.copyWith(
           status: AuthStatus.authenticated,
-          token: Token(accessToken: savedToken),
-          // TODO: Загрузить данные пользователя, если токен валиден
+          token: TokenModel(accessToken: tokenString),
+          user: loadedUser,
         );
       } else {
+        print('AuthNotifier: No token found in storage.');
         state = state.copyWith(status: AuthStatus.unauthenticated);
       }
     } catch (e) {
-      print('Failed to load token: $e');
+      print('AuthNotifier: Failed to initialize auth status: $e');
       state = state.copyWith(status: AuthStatus.unauthenticated);
     }
   }
@@ -80,21 +110,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // Метод для входа
   Future<void> login(String username, String password) async {
     try {
-      state = state.copyWith(status: AuthStatus.unknown); // Показываем индикатор загрузки
-      final token = await _authService.login(username, password);
-      await _storage.write(key: _tokenStorageKey, value: token.accessToken);
-      print('Token saved to storage: ${token.accessToken}');
-      // TODO: Загрузить данные пользователя после входа (если API не возвращает их сразу)
+      state = state.copyWith(status: AuthStatus.loading, errorMessage: null); 
+      final user = await _authService.login(username, password);
+      final tokenString = await _tokenStorage.getToken(); // Получаем токен, сохраненный AuthService
+
+      if (tokenString == null) {
+         throw Exception('Token was not saved after login.');
+      }
+
       state = state.copyWith(
         status: AuthStatus.authenticated,
-        token: token,
-        // user: fetchedUser,
-        errorMessage: null, // Сбрасываем ошибку при успехе
+        token: TokenModel(accessToken: tokenString),
+        user: user,
+        errorMessage: null, 
       );
     } catch (e) {
+      print('AuthNotifier: Login failed: $e');
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
-        errorMessage: 'Ошибка входа: ${e.toString()}',
+        errorMessage: e.toString(),
         clearToken: true,
         clearUser: true,
       );
@@ -108,68 +142,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
     String? phone,
     String? firstName,
   }) async {
-    state = state.copyWith(status: AuthStatus.unknown, errorMessage: null);
+    state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
     try {
-      // 1. Call AuthService.register, which returns a User object
-      //    and saves the token string to secure storage.
       final User registeredUser = await _authService.register(
         username: username,
         password: password,
         phone: phone,
         firstName: firstName,
       );
-
-      // 2. Read the token string that AuthService saved.
-      //    Ensure _tokenStorageKey in AuthNotifier matches 'auth_token'.
-      final String? accessTokenString = await _storage.read(key: _tokenStorageKey);
+      final String? accessTokenString = await _tokenStorage.getToken();
 
       if (accessTokenString == null) {
-        // This case should ideally not occur if AuthService.register succeeded
-        // and saved the token.
-        print('Error: Token not found in storage after registration.');
-        // Set an error state or re-throw a more specific exception
-        state = state.copyWith(
-          status: AuthStatus.unauthenticated,
-          errorMessage: 'Ошибка регистрации: токен не был сохранен.',
-          clearToken: true,
-          clearUser: true,
-        );
-        return; // Exit if token is missing
+        print('AuthNotifier: Error - Token not found in storage after registration.');
+        throw Exception('Токен не был сохранен после регистрации.');
       }
-
-      // 3. Create a Token object
-      final Token token = Token(accessToken: accessTokenString);
-
-      // 4. Update AuthState
-      // AuthService already saved the token string. If AuthNotifier also writes it
-      // using the same key, it's redundant but harmless.
-      // If AuthNotifier is the sole manager of _storage for token, this write is necessary.
-      // await _storage.write(key: _tokenStorageKey, value: token.accessToken);
-      // For now, we assume AuthService's write is sufficient for storage,
-      // and AuthNotifier primarily needs the Token object for its state.
-
-      print('User registered successfully: ${registeredUser.username}');
-      print('Token retrieved for AuthState: ${token.accessToken}');
 
       state = state.copyWith(
         status: AuthStatus.authenticated,
-        token: token, // Use the created Token object
-        user: registeredUser, // Use the User object from registration
-        errorMessage: null, // Clear any previous error message
+        user: registeredUser,
+        token: TokenModel(accessToken: accessTokenString),
+        errorMessage: null,
       );
-    } catch (e, stackTrace) {
-      // Логируем ошибку для отладки
-      print('Error during registration in AuthNotifier: $e');
-      print(stackTrace);
-
-      String displayErrorMessage = e.toString();
-      if (displayErrorMessage.startsWith('Exception: ')) {
-        displayErrorMessage = displayErrorMessage.substring('Exception: '.length);
-      }
-
+    } catch (e) {
+      print('AuthNotifier: Registration failed: $e');
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
-        errorMessage: displayErrorMessage, // Устанавливаем чистое сообщение об ошибке
+        errorMessage: e.toString(),
         clearToken: true,
         clearUser: true,
       );
@@ -178,49 +176,56 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   // Метод для выхода
   Future<void> logout() async {
-    if (state.token != null) {
-      try {
-        await _authService.logout(state.token!.accessToken);
-      } catch (e) {
-        // Обработка ошибки выхода на сервере (можно проигнорировать или залогировать)
-        print('Ошибка при выходе на сервере: $e');
-      }
-    }
+    state = state.copyWith(status: AuthStatus.loading);
     try {
-      await _storage.delete(key: _tokenStorageKey);
-      print('Token deleted from storage');
+      await _authService.logout(); // AuthService теперь сам управляет TokenStorage
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearUser: true,
+        clearToken: true,
+        errorMessage: null,
+      );
+      print('AuthNotifier: User logged out.');
     } catch (e) {
-      print('Failed to delete token: $e');
+      print('AuthNotifier: Error during logout: $e');
+      // Даже если произошла ошибка при вызове API выхода (например, нет сети),
+      // все равно переводим в состояние unauthenticated локально.
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearUser: true,
+        clearToken: true,
+        errorMessage: 'Ошибка при выходе: ${e.toString()}',
+      );
     }
-    state = state.copyWith(
-      status: AuthStatus.unauthenticated,
-      clearUser: true,
-      clearToken: true,
-      errorMessage: null,
-    );
   }
 }
 
-// Провайдер StateNotifier
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+// Провайдер состояния аутентификации
+final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final authService = ref.watch(authServiceProvider);
-  final storage = ref.watch(secureStorageProvider);
-  return AuthNotifier(authService, storage);
+  final tokenStorage = ref.watch(tokenStorageProvider);
+  return AuthNotifier(authService, tokenStorage);
 });
 
-// Селекторы для удобного доступа к частям состояния
+// Провайдер для получения текущего пользователя (если аутентифицирован)
+final currentUserProvider = Provider<User?>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.status == AuthStatus.authenticated ? authState.user : null;
+});
+
+// Провайдер для получения текущего токена (если аутентифицирован)
+final currentTokenProvider = Provider<TokenModel?>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.status == AuthStatus.authenticated ? authState.token : null;
+});
+
+// Провайдер для получения статуса аутентификации
 final authStatusProvider = Provider<AuthStatus>((ref) {
-  return ref.watch(authProvider).status;
+  return ref.watch(authStateProvider).status;
 });
 
-final authTokenProvider = Provider<String?>((ref) {
-  return ref.watch(authProvider).token?.accessToken;
-});
-
-final authUserProvider = Provider<User?>((ref) {
-  return ref.watch(authProvider).user;
-});
-
-final authErrorProvider = Provider<String?>((ref) {
-  return ref.watch(authProvider).errorMessage;
+// Провайдер для получения только строки токена
+final authTokenProvider = Provider<String>((ref) {
+  final tokenModel = ref.watch(currentTokenProvider);
+  return tokenModel?.accessToken ?? ''; // Возвращаем пустую строку, если токен не найден
 });

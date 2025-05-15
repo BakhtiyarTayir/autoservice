@@ -1,18 +1,18 @@
 // Модель данных для токена аутентификации
-class Token {
+class TokenModel {
   final String accessToken;
   final String? refreshToken; // Может быть необязательным
   final DateTime? expiresAt; // Время истечения срока действия токена
 
-  Token({
+  TokenModel({
     required this.accessToken,
     this.refreshToken,
     this.expiresAt,
   });
 
   // Фабричный конструктор для создания из JSON (пример)
-  factory Token.fromJson(Map<String, dynamic> json) {
-    return Token(
+  factory TokenModel.fromJson(Map<String, dynamic> json) {
+    return TokenModel(
       accessToken: json['access_token'], // Убедитесь, что ключи соответствуют API
       refreshToken: json['refresh_token'],
       // Пример парсинга даты, если она приходит в виде строки ISO 8601

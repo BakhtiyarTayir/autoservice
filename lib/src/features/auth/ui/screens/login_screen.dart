@@ -8,8 +8,8 @@ class LoginScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-    final authNotifier = ref.read(authProvider.notifier);
+    final authState = ref.watch(authStateProvider);
+    final authNotifier = ref.read(authStateProvider.notifier);
 
     // Контроллеры для полей ввода
     final usernameController = TextEditingController();
