@@ -190,6 +190,12 @@ class AuthService {
         print('Type error details: ${e.stackTrace}');
         throw Exception('Ошибка обработки данных. Проверьте типы данных.');
       }
+      
+      // Проверка на конкретное сообщение об ошибке "This user exist"
+      if (e.toString().contains('This user exist')) {
+        throw Exception('Пользователь с таким именем уже существует.');
+      }
+      
       throw Exception('Произошла непредвиденная ошибка при регистрации.');
     }
   }

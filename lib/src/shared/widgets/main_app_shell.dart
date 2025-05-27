@@ -71,7 +71,7 @@ class _MainAppShellState extends ConsumerState<MainAppShell> {
         ],
         currentIndex: selectedIndex,
         selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Colors.grey,
+        unselectedItemColor: Colors.black,
         onTap: (index) {
           // Обновляем состояние провайдера
           ref.read(selectedTabProvider.notifier).state = index;

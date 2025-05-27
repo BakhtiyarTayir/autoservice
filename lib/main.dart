@@ -1,7 +1,6 @@
 import 'package:autoservice/src/features/auth/providers/auth_provider.dart';
 import 'package:autoservice/src/features/auth/ui/screens/login_screen.dart';
-// import 'package:autoservice/src/features/home/ui/screens/home_screen.dart'; // Больше не нужен прямой импорт HomeScreen здесь
-import 'package:autoservice/src/shared/widgets/main_app_shell.dart'; // Импортируем новый MainAppShell
+import 'package:autoservice/src/shared/widgets/main_app_shell.dart'; 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
