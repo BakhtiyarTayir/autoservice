@@ -31,6 +31,7 @@ class _MainAppShellState extends ConsumerState<MainAppShell> {
     final selectedIndex = ref.watch(selectedTabProvider);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(_getTitleForIndex(selectedIndex)),
         backgroundColor: Theme.of(context).colorScheme.primary,
@@ -70,8 +71,9 @@ class _MainAppShellState extends ConsumerState<MainAppShell> {
           ),
         ],
         currentIndex: selectedIndex,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Colors.black,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.grey,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         onTap: (index) {
           // Обновляем состояние провайдера
           ref.read(selectedTabProvider.notifier).state = index;

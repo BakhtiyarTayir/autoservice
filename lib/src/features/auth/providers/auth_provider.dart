@@ -63,33 +63,27 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final tokenString = await _tokenStorage.getToken();
       if (tokenString != null && tokenString.isNotEmpty) {
         print('AuthNotifier: Token found in storage: $tokenString');
-        // Попытка получить данные пользователя, если токен есть
-        // Это предполагает, что у вас есть метод для получения User по токену
-        // или что partnerId также хранится и может быть использован для создания User объекта
-        // Для простоты, если токен есть, считаем пользователя аутентифицированным
-        // и пытаемся загрузить partnerId для User объекта
+        // Получаем partnerId из хранилища
         final partnerId = await _tokenStorage.getPartnerId();
-        // Здесь можно попытаться загрузить полные данные пользователя, если это необходимо
-        // Например, вызвав _authService._fetchUserDetails(tokenString)
-        // Но для currentPartnerIdProvider достаточно partnerId
         
-        // Создаем временного пользователя с partnerId, если он есть
-        // В реальном приложении здесь должен быть полноценный объект User, полученный с сервера
+        // Создаем базовый объект User с имеющимися данными
+        // Примечание: полные данные пользователя доступны только при входе,
+        // поэтому здесь мы создаем объект с минимальными данными
         User? loadedUser;
         if (partnerId != null) {
-          // Если username и другие поля не известны на этом этапе, 
-          // можно создать User с теми данными, что есть, или загрузить их.
-          // Для примера, создадим User с username='cached_user' если partnerId есть.
-          // В идеале, _fetchUserDetails должен вызываться здесь.
-          try {
-            loadedUser = await _authService.fetchUserDetailsOnLoad(tokenString);
-             print('AuthNotifier: User details loaded on init: ${loadedUser?.username}, Partner ID: ${loadedUser?.partnerId}');
-          } catch (e) {
-            print('AuthNotifier: Failed to load user details on init: $e. Clearing token.');
-            await _tokenStorage.deleteAll(); // Если не удалось получить юзера, токен невалиден
-            state = state.copyWith(status: AuthStatus.unauthenticated, clearUser: true, clearToken: true);
-            return;
-          }
+          // Создаем базовый объект User с данными, которые у нас есть
+          // В реальном приложении можно хранить больше данных пользователя локально
+          loadedUser = User(
+            username: 'cached_user', // Используем временное имя пользователя
+            partnerId: partnerId
+          );
+          print('AuthNotifier: Created user with cached data. Partner ID: $partnerId');
+        } else {
+          print('AuthNotifier: No partner ID found in storage. User might need to login again.');
+          // Если нет partnerId, возможно, данные неполные или повреждены
+          await _tokenStorage.deleteAll();
+          state = state.copyWith(status: AuthStatus.unauthenticated, clearUser: true, clearToken: true);
+          return;
         }
 
         state = state.copyWith(

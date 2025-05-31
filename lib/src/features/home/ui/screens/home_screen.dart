@@ -33,7 +33,7 @@ class HomeScreen extends ConsumerWidget {
     final allPartnersAsync = ref.watch(allPartnersProvider);
 
     final List<Color> cardColors = [
-      Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(178),
+      Colors.white, // Изменено на белый
       Theme.of(context).colorScheme.secondaryContainer.withAlpha(178),
       Theme.of(context).colorScheme.tertiaryContainer.withAlpha(178),
       Theme.of(context).colorScheme.primaryContainer.withAlpha(178),
@@ -51,7 +51,7 @@ class HomeScreen extends ConsumerWidget {
           context: context,
           title: 'Обзор заявок',
           icon: Icons.list_alt_outlined,
-          cardColor: cardColors[0],
+          cardColor: cardColors[0], // Используем первый цвет
           content: partnerRequestsAsync.when(
             data: (requests) {
               final newRequestsCount = requests.where((req) => req.status == RequestStatus.pending).length; // Пример фильтрации
@@ -107,7 +107,7 @@ class HomeScreen extends ConsumerWidget {
           context: context,
           title: 'Быстрый доступ',
           icon: Icons.explore_outlined,
-          cardColor: cardColors[3],
+          cardColor: cardColors[0], // Используем тот же первый цвет для консистентности
           content: Wrap(
             spacing: 8.0,
             runSpacing: 8.0,
@@ -185,6 +185,7 @@ class HomeScreen extends ConsumerWidget {
                   // Если это последний элемент и нужно показать "Посмотреть все"
                   if (showViewAllSlide && index == partners.length) {
                     return Card(
+                      color: Colors.white, // Явно устанавливаем белый цвет
                       margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
                       elevation: 4.0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
@@ -218,6 +219,7 @@ class HomeScreen extends ConsumerWidget {
                   // Обычный слайд с автосервисом
                   final partner = partners[index];
                   return Card(
+                    color: Colors.white, // Явно устанавливаем белый цвет
                     margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
                     elevation: 4.0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
@@ -348,11 +350,11 @@ class HomeScreen extends ConsumerWidget {
     required IconData icon,
     required Widget content,
     List<Widget>? actions,
-    Color? cardColor,
+    Color? cardColor, 
   }) {
     return Card(
       elevation: 2.0,
-      color: cardColor ?? Theme.of(context).cardColor,
+      color: Colors.white, // Явно устанавливаем белый цвет
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),

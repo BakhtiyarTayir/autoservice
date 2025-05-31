@@ -30,14 +30,16 @@ class AuthService {
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        // Успешный вход, парсим токен
+        // Успешный вход, получаем данные пользователя и токен
         print('AuthService: Login successful, response data: ${response.data}');
-        final tokenModel = TokenModel.fromJson(response.data);
-        await _tokenStorage.saveToken(tokenModel.accessToken);
-        print('AuthService: Token saved: ${tokenModel.accessToken.substring(0, 15)}...');
+        
+        // Сохраняем токен
+        final String accessToken = response.data['access_token'] as String;
+        await _tokenStorage.saveToken(accessToken);
+        print('AuthService: Token saved: ${accessToken.substring(0, 15)}...');
 
-        // Получаем данные пользователя, включая partnerId
-        final user = await fetchUserDetailsOnLoad(tokenModel.accessToken);
+        // Создаем объект пользователя из полученных данных
+        final user = User.fromJson(response.data);
         if (user.partnerId != null) {
           await _tokenStorage.savePartnerId(user.partnerId!);
           print('AuthService: Partner ID saved: ${user.partnerId}');
@@ -200,56 +202,11 @@ class AuthService {
     }
   }
 
+  // Этот метод больше не используется, так как все данные пользователя получаются при входе
+  // Оставлен для обратной совместимости
   Future<User> fetchUserDetailsOnLoad(String token) async {
-    try {
-      print('AuthService: Fetching user details with token');
-      const String userDetailsEndpoint = '/auth/user';
-
-      final response = await _dio.get(
-        '$_baseUrl$userDetailsEndpoint',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      if (response.statusCode == 200 && response.data != null) {
-        print('AuthService: User details fetched successfully: ${response.data}');
-        Map<String, dynamic> userData = response.data as Map<String, dynamic>;        
-        return User.fromJson(userData);
-      } else {
-        print('AuthService: Failed to fetch user details. Status: ${response.statusCode}, Data: ${response.data}');
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          error: 'Failed to fetch user details with status code ${response.statusCode}',
-          type: DioExceptionType.badResponse,
-        );
-      }
-    } on DioException catch (e) {
-      print('AuthService: Dio error fetching user details: ${e.message}');
-      print('AuthService: Response status: ${e.response?.statusCode}');
-      print('AuthService: Response data: ${e.response?.data}');
-      
-      String errorMessage = 'Ошибка при получении данных пользователя.';
-      if (e.response?.statusCode == 401) {
-        errorMessage = 'Сессия истекла или недействительна. Пожалуйста, войдите снова.';
-        // Здесь можно очистить токен, чтобы пользователь точно перешел на экран входа
-        await _tokenStorage.deleteAll(); 
-      } else if (e.response?.statusCode == 404) {
-        errorMessage = 'Эндпоинт для получения данных пользователя не найден.';
-      } else if (e.type == DioExceptionType.connectionTimeout || 
-                e.type == DioExceptionType.sendTimeout || 
-                e.type == DioExceptionType.receiveTimeout || 
-                e.type == DioExceptionType.connectionError) {
-        errorMessage = 'Ошибка сети при получении данных пользователя.';
-      }
-      throw Exception(errorMessage);
-    } catch (e) {
-      print('AuthService: Unexpected error fetching user details: $e');
-      if (e is TypeError) {
-        print('AuthService: Type error details: ${e.stackTrace}');
-        throw Exception('Ошибка обработки данных пользователя. Проверьте модель User.');
-      }
-      throw Exception('Непредвиденная ошибка при получении данных пользователя: $e');
-    }
+    // Выбрасываем исключение, так как эндпоинт не существует
+    throw Exception('Эндпоинт /auth/user не существует. Все данные пользователя передаются при входе.');
   }
 
   // Метод для выхода пользователя
