@@ -49,3 +49,20 @@ final allPartnersProvider = FutureProvider<List<Partner>>((ref) async {
     rethrow;
   }
 });
+
+// Провайдер для получения деталей о партнере по ID
+final partnerDetailsByIdProvider = FutureProvider.family<Partner?, int>((ref, partnerId) async {
+  final partnerRepository = ref.watch(partnerRepositoryProvider);
+  try {
+    print('partnerDetailsByIdProvider: Fetching details for partner ID: $partnerId');
+    final partner = await partnerRepository.getPartnerDetails(partnerId.toString());
+    print('partnerDetailsByIdProvider: Successfully fetched partner details: ${partner.name}');
+    return partner;
+  } catch (e, stackTrace) {
+    print('partnerDetailsByIdProvider: Error fetching partner details for ID $partnerId: $e');
+    print(stackTrace);
+    // Можно обработать ошибку более специфично или просто передать ее дальше
+    // В UI это будет состояние AsyncError
+    rethrow; // Передаем исключение, чтобы FutureProvider перешел в состояние ошибки
+  }
+});

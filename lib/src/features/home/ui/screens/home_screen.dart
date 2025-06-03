@@ -7,6 +7,7 @@ import 'package:autoservice/src/features/requests/data/user_request_model.dart';
 import 'package:autoservice/src/features/partner/ui/widgets/partner_list_item.dart'; 
 import 'package:autoservice/src/features/requests/ui/screens/partner_requests_screen.dart';
 import 'package:autoservice/src/shared/providers/navigation_providers.dart';
+import 'package:autoservice/src/features/partner/ui/screens/partner_detail_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -289,8 +290,10 @@ class HomeScreen extends ConsumerWidget {
                               ElevatedButton(
                                 onPressed: () {
                                   // Navigate to partner details
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Переход к партнеру: ${partner.name} (TODO)')),
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => PartnerDetailScreen(partnerId: partner.id),
+                                    ),
                                   );
                                 },
                                 style: ElevatedButton.styleFrom(

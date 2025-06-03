@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:autoservice/src/features/partner/data/partner_model.dart';
+import 'package:autoservice/src/features/partner/ui/screens/partner_detail_screen.dart';
+import 'package:maps_launcher/maps_launcher.dart';
+import 'package:map_launcher/map_launcher.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class PartnerListItem extends StatelessWidget {
   final Partner partner;
@@ -135,9 +139,7 @@ class PartnerListItem extends StatelessWidget {
                       final lat = partner.latitude;
                       final lng = partner.longitude;
                       if (lat != null && lng != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Открываем карту: $lat, $lng (TODO)')),
-                        );
+                        _openMap(context, lat, lng);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Координаты не указаны')),
@@ -192,8 +194,79 @@ class PartnerListItem extends StatelessWidget {
   }
 
   void _onTapPartner(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Переход к деталям партнера: ${partner.name} (TODO)')),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => PartnerDetailScreen(partnerId: partner.id),
+      ),
     );
   }
+}
+
+// Метод для открытия карты с использованием map_launcher и параметром zoom
+Future<void> _openMap(BuildContext context, double? latitude, double? longitude) async {
+  if (latitude != null && longitude != null) {
+    try {
+      // Получаем список доступных карт
+      final availableMaps = await MapLauncher.installedMaps;
+      
+      if (availableMaps.isNotEmpty) {
+        if (availableMaps.length == 1) {
+          // Если доступна только одна карта, используем её
+          await availableMaps.first.showMarker(
+            coords: Coords(latitude, longitude),
+            title: 'Автосервис',
+            zoom: 16, // Устанавливаем уровень масштабирования
+          );
+        } else {
+          // Если доступно несколько карт, показываем диалог выбора
+          await _showMapSelectionDialog(context, availableMaps, latitude, longitude);
+        }
+      } else {
+        // Если нет доступных карт, используем старый метод
+        MapsLauncher.launchCoordinates(latitude, longitude);
+      }
+    } catch (e) {
+      // В случае ошибки используем старый метод
+      MapsLauncher.launchCoordinates(latitude, longitude);
+    }
+  }
+}
+
+// Метод для отображения диалога выбора карты
+Future<void> _showMapSelectionDialog(BuildContext context, List<AvailableMap> availableMaps, double latitude, double longitude) async {
+  return showModalBottomSheet(
+    context: context,
+    builder: (BuildContext context) {
+      return SafeArea(
+        child: SingleChildScrollView(
+          child: Wrap(
+            children: [
+              ListTile(
+                title: const Text('Выберите приложение'),
+                onTap: () => Navigator.pop(context),
+              ),
+              const Divider(),
+              ...availableMaps.map((map) => ListTile(
+                title: Text(map.mapName),
+                // Преобразуем строку SVG в виджет с помощью SvgPicture.string
+                leading: SvgPicture.string(
+                  map.icon,
+                  height: 30.0,
+                  width: 30.0,
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  map.showMarker(
+                    coords: Coords(latitude, longitude),
+                    title: 'Автосервис',
+                    zoom: 16,
+                  );
+                },
+              )),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
