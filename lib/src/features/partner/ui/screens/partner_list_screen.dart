@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:autoservice/src/features/home/providers/home_providers.dart';
 import 'package:autoservice/src/features/partner/ui/widgets/partner_list_item.dart';
 import 'package:autoservice/src/features/partner/data/partner_model.dart';
+import 'package:autoservice/src/features/partner/ui/screens/create_partner_screen.dart';
 
 class PartnerListScreen extends ConsumerStatefulWidget {
   const PartnerListScreen({super.key});
@@ -19,84 +20,104 @@ class _PartnerListScreenState extends ConsumerState<PartnerListScreen> {
     // Используем существующий провайдер для получения списка всех партнеров
     final allPartnersAsync = ref.watch(allPartnersProvider);
     
-    return Column(
-      children: [
-        // Поисковая строка
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Поиск автосервисов...',
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+    return Scaffold(
+      // Добавляем FAB для создания нового автосервиса
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          // Открываем экран создания автосервиса
+          final result = await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const CreatePartnerScreen(),
             ),
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value.toLowerCase();
-              });
-            },
-          ),
-        ),
-        
-        // Основной контент - список или сообщения об ошибках/загрузке
-        Expanded(
-          child: allPartnersAsync.when(
-            data: (partners) {
-              // Фильтрация по поисковому запросу
-              final filteredPartners = partners.where((partner) => 
-                partner.name.toLowerCase().contains(_searchQuery) ||
-                (partner.description != null && partner.description!.toLowerCase().contains(_searchQuery)) ||
-                partner.address.toLowerCase().contains(_searchQuery)
-              ).toList();
-              
-              // Если нет партнеров после фильтрации, показываем сообщение
-              if (filteredPartners.isEmpty) {
-                return _buildEmptyState(
-                  icon: _searchQuery.isEmpty ? Icons.car_repair : Icons.search_off,
-                  title: _searchQuery.isEmpty 
-                      ? 'Автосервисы не найдены' 
-                      : 'По запросу "$_searchQuery" ничего не найдено',
-                  subtitle: _searchQuery.isEmpty
-                      ? 'В данный момент список автосервисов пуст'
-                      : 'Попробуйте изменить поисковый запрос',
-                );
-              }
-              
-              // Отображаем список партнеров
-              return RefreshIndicator(
-                onRefresh: () async {
-                  // Перезагружаем данные при свайпе вниз
-                  ref.refresh(allPartnersProvider);
-                },
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: filteredPartners.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final partner = filteredPartners[index];
-                    return Card(
-                      margin: EdgeInsets.zero,
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: PartnerListItem(partner: partner),
-                    );
-                  },
+          );
+          
+          // Если вернулся результат true, значит автосервис был создан
+          // и список нужно обновить
+          if (result == true) {
+            ref.refresh(allPartnersProvider);
+          }
+        },
+        child: const Icon(Icons.add),
+      ),
+      body: Column(
+        children: [
+          // Поисковая строка
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Поиск автосервисов...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stackTrace) => _buildErrorState(error, () {
-              ref.refresh(allPartnersProvider);
-            }),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              },
+            ),
           ),
-        ),
-      ],
+          
+          // Основной контент - список или сообщения об ошибках/загрузке
+          Expanded(
+            child: allPartnersAsync.when(
+              data: (partners) {
+                // Фильтрация по поисковому запросу
+                final filteredPartners = partners.where((partner) => 
+                  partner.name.toLowerCase().contains(_searchQuery) ||
+                  (partner.description != null && partner.description!.toLowerCase().contains(_searchQuery)) ||
+                  partner.address.toLowerCase().contains(_searchQuery)
+                ).toList();
+                
+                // Если нет партнеров после фильтрации, показываем сообщение
+                if (filteredPartners.isEmpty) {
+                  return _buildEmptyState(
+                    icon: _searchQuery.isEmpty ? Icons.car_repair : Icons.search_off,
+                    title: _searchQuery.isEmpty 
+                        ? 'Автосервисы не найдены' 
+                        : 'По запросу "$_searchQuery" ничего не найдено',
+                    subtitle: _searchQuery.isEmpty
+                        ? 'В данный момент список автосервисов пуст'
+                        : 'Попробуйте изменить поисковый запрос',
+                  );
+                }
+                
+                // Отображаем список партнеров
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    // Перезагружаем данные при свайпе вниз
+                    ref.refresh(allPartnersProvider);
+                  },
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: filteredPartners.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final partner = filteredPartners[index];
+                      return Card(
+                        margin: EdgeInsets.zero,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: PartnerListItem(partner: partner),
+                      );
+                    },
+                  ),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stackTrace) => _buildErrorState(error, () {
+                ref.refresh(allPartnersProvider);
+              }),
+            ),
+          ),
+        ],
+      ),
     );
   }
   
@@ -156,4 +177,4 @@ class _PartnerListScreenState extends ConsumerState<PartnerListScreen> {
       ),
     );
   }
-} 
+}

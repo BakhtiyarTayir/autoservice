@@ -63,4 +63,61 @@ class PartnerRepository {
       throw Exception('An unexpected error occurred while fetching all partners.');
     }
   }
+
+  /// Создает нового партнера (автосервис).
+  /// Эндпоинт `POST {{base_url}}/partners`.
+  Future<Partner> createPartner({
+    required String name,
+    required String description,
+    required String address,
+    required String region,
+    required String location,
+    required String phone,
+    dynamic logoFile,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'name': name,
+        'description': description,
+        'adress': address, // Note: API uses "adress" not "address"
+        'region': region,
+        'location': location,
+        'phone': phone,
+      });
+      
+      // Добавляем файл логотипа, если он предоставлен
+      if (logoFile != null) {
+        formData.files.add(
+          MapEntry(
+            'logo_image',
+            await MultipartFile.fromFile(logoFile.path, filename: logoFile.name),
+          ),
+        );
+      }
+      
+      print('Creating new partner with URL: ${_dio.options.baseUrl}/partners');
+      final response = await _dio.post('/partners', data: formData);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data != null) {
+          return Partner.fromJson(response.data as Map<String, dynamic>);
+        } else {
+          // Если сервер не вернул данные созданного партнера, получаем список всех партнеров
+          // и возвращаем последнего добавленного (это временное решение)
+          final partners = await getAllPartners();
+          return partners.last;
+        }
+      } else {
+        throw Exception('Failed to create partner, status code: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      print('DioException in createPartner: ${e.message}');
+      print('Request URL: ${e.requestOptions.path}');
+      print('Response status: ${e.response?.statusCode}');
+      throw Exception('Failed to create partner: ${e.message}');
+    } catch (e) {
+      print('Error in createPartner: ${e.toString()}');
+      throw Exception('An unexpected error occurred while creating partner.');
+    }
+  }
 }

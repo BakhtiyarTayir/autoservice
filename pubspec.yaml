@@ -43,6 +43,7 @@ dependencies:
   maps_launcher: ^3.0.0+1
   map_launcher: ^3.5.0
   flutter_svg: ^2.0.10 # Для иконок map_launcher, которые в формате SVG
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

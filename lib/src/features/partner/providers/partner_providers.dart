@@ -66,3 +66,31 @@ final partnerDetailsByIdProvider = FutureProvider.family<Partner?, int>((ref, pa
     rethrow; // Передаем исключение, чтобы FutureProvider перешел в состояние ошибки
   }
 });
+
+
+// Провайдер для создания нового партнера
+final createPartnerProvider = FutureProvider.family<Partner, Map<String, dynamic>>((ref, partnerData) async {
+  final partnerRepository = ref.watch(partnerRepositoryProvider);
+  try {
+    print('createPartnerProvider: Creating new partner with data: $partnerData');
+    final partner = await partnerRepository.createPartner(
+      name: partnerData['name'] as String,
+      description: partnerData['description'] as String,
+      address: partnerData['address'] as String,
+      region: partnerData['region'] as String,
+      location: partnerData['location'] as String,
+      phone: partnerData['phone'] as String,
+      logoFile: partnerData['logoFile'],
+    );
+    print('createPartnerProvider: Successfully created partner: ${partner.name}');
+    
+    // Обновляем список всех партнеров после создания нового
+    ref.invalidate(allPartnersProvider);
+    
+    return partner;
+  } catch (e) {
+    print('createPartnerProvider: Error creating partner: $e');
+    // Передаем исключение, чтобы FutureProvider перешел в состояние ошибки
+    rethrow;
+  }
+});
