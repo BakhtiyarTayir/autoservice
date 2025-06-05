@@ -86,7 +86,7 @@ class Partner {
       description: json['description'] as String?,
       logo: json['logo'] as String?,
       address: json['adress'] as String, // Note: API uses "adress" not "address"
-      region: json['region'] as int,
+      region: int.tryParse(json['region'].toString()) ?? 0, // Handle string to int conversion
       location: json['location'] as String,
       phone: json['phone'] as String,
       status: json['status'] as int,

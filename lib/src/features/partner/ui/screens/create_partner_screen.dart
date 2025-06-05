@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:autoservice/src/features/partner/providers/partner_providers.dart';
+import 'package:autoservice/src/features/partner/ui/screens/partner_detail_screen.dart';
 import 'package:image_picker/image_picker.dart';
 
 class CreatePartnerScreen extends ConsumerStatefulWidget {
@@ -67,11 +68,24 @@ class _CreatePartnerScreenState extends ConsumerState<CreatePartnerScreen> {
         };
 
         // Вызываем провайдер для создания партнера
-        await ref.read(createPartnerProvider(partnerData).future);
+        final createdPartner = await ref.read(createPartnerProvider(partnerData).future);
 
-        // Если успешно, закрываем экран
+        // Если успешно, показываем сообщение об успехе
         if (mounted) {
-          Navigator.of(context).pop(true); // Возвращаем true, чтобы указать успешное создание
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Автосервис успешно создан!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          
+          // Переходим к детальному экрану созданного автосервиса
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => PartnerDetailScreen(partnerId: createdPartner.id),
+            ),
+          );
         }
       } catch (e) {
         setState(() {
